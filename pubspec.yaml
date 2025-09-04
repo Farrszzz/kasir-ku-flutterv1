@@ -47,4 +47,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/app_logo.png"
-  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF" # bisa ganti jadi #004CCE biar sesuai tema
+  adaptive_icon_foreground: "assets/images/app_logo.png"
+  name: "Kasir-ku"
+  description: "Aplikasi POS (Point of Sale) modern dengan Firebase backend"

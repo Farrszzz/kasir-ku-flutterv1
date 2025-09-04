@@ -6,6 +6,7 @@ import 'pages/barang_page.dart';
 import 'pages/transaksi_page.dart';
 import 'pages/riwayat_page.dart';
 import 'pages/pengaturan_page.dart';
+import 'theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,23 +23,7 @@ class KasirKuApp extends StatelessWidget {
     return MaterialApp(
       title: 'Kasir-ku',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.lightBlue,
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
+      theme: AppTheme.lightTheme(),
       home: const MainNavigationPage(),
     );
   }
@@ -73,6 +58,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
             _currentIndex = index;
           });
         },
+        backgroundColor: Colors.white,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
