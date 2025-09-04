@@ -127,7 +127,11 @@ class _BarangPageState extends State<BarangPage> {
                   decoration: InputDecoration(
                     labelText: "Filter by Category",
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
                     ),
                   ),
                 ),
@@ -173,8 +177,10 @@ class _BarangPageState extends State<BarangPage> {
                     final data = docs[i];
                     return Card(
                       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      elevation: 2,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
                       ),
                       child: ListTile(
                         title: Text(data['name'] ?? ""),
@@ -220,6 +226,8 @@ class _BarangPageState extends State<BarangPage> {
         onPressed: () => _openForm(),
         label: Text("Tambah Barang"),
         icon: Icon(Icons.add),
+        backgroundColor: Theme.of(context).primaryColor,
+        foregroundColor: Colors.white,
       ),
     );
   }
@@ -396,7 +404,11 @@ class _AddProductFormState extends State<AddProductForm> {
                   focusNode: focusNode,
                   decoration: InputDecoration(
                     labelText: "Kategori",
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                    ),
                   ),
                   validator: (val) => val!.isEmpty ? "Wajib diisi" : null,
                   onChanged: (v) => categoryCtrl.text = v,
@@ -411,7 +423,11 @@ class _AddProductFormState extends State<AddProductForm> {
               controller: priceCtrl,
               decoration: InputDecoration(
                 labelText: "Harga",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                ),
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -422,7 +438,11 @@ class _AddProductFormState extends State<AddProductForm> {
               controller: stockCtrl,
               decoration: InputDecoration(
                 labelText: "Stok",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                ),
               ),
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],

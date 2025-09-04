@@ -10,7 +10,6 @@ class DashboardPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dashboard'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -167,7 +166,13 @@ class DashboardPage extends StatelessWidget {
     IconData icon,
     Color color,
   ) {
+    final theme = Theme.of(context);
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -176,20 +181,20 @@ class DashboardPage extends StatelessWidget {
             Icon(
               icon,
               size: 32,
-              color: color,
+              color: theme.primaryColor,
             ),
             const SizedBox(height: 8),
             Text(
               title,
-              style: Theme.of(context).textTheme.bodySmall,
+              style: theme.textTheme.bodySmall,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: color,
+                    color: theme.primaryColor,
                   ),
               textAlign: TextAlign.center,
             ),
@@ -206,10 +211,16 @@ class DashboardPage extends StatelessWidget {
     Color color,
     VoidCallback onTap,
   ) {
+    final theme = Theme.of(context);
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -217,19 +228,21 @@ class DashboardPage extends StatelessWidget {
               Icon(
                 icon,
                 size: 24,
-                color: color,
+                color: theme.primaryColor,
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   title,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: Colors.grey[400],
+                color: theme.primaryColor,
               ),
             ],
           ),

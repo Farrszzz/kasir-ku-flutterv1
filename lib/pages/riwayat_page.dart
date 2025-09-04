@@ -19,7 +19,6 @@ class _RiwayatPageState extends State<RiwayatPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Transaksi'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
       body: Column(
         children: [
@@ -60,6 +59,11 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   children: [
                     Expanded(
                       child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -67,7 +71,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                               Icon(
                                 Icons.today,
                                 size: 32,
-                                color: Colors.blue,
+                                color: Theme.of(context).primaryColor,
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -78,7 +82,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                 'Rp ${NumberFormat('#,###', 'id_ID').format(todayTotal)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.blue,
+                                  color: Theme.of(context).primaryColor,
                                 ),
                               ),
                               Text(
@@ -93,6 +97,11 @@ class _RiwayatPageState extends State<RiwayatPage> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
+                        ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -100,7 +109,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                               Icon(
                                 Icons.all_inclusive,
                                 size: 32,
-                                color: Colors.green,
+                                color: Theme.of(context).primaryColor,
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -111,7 +120,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                                 'Rp ${NumberFormat('#,###', 'id_ID').format(allTimeTotal)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.green,
+                                  color: Theme.of(context).primaryColor,
                                 ),
                               ),
                               Text(
@@ -175,9 +184,14 @@ class _RiwayatPageState extends State<RiwayatPage> {
                     
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
+                      ),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor: Theme.of(context).primaryColor,
                           child: const Icon(
                             Icons.receipt,
                             color: Colors.white,
@@ -185,7 +199,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                         ),
                         title: Text(
                           'Transaksi #${doc.id.substring(0, 8)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +220,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                               'Rp ${NumberFormat('#,###', 'id_ID').format(data['total'] ?? 0)}',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
+                                color: Theme.of(context).primaryColor,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -237,7 +251,8 @@ class _RiwayatPageState extends State<RiwayatPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Detail Transaksi #${transactionId.substring(0, 8)}'),
+        title: Text('Detail Transaksi #${transactionId.substring(0, 8)}', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -273,7 +288,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                   const Text('Total:', style: TextStyle(fontWeight: FontWeight.bold)),
                   Text(
                     'Rp ${NumberFormat('#,###', 'id_ID').format(data['total'] ?? 0)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                   ),
                 ],
               ),
@@ -297,6 +312,9 @@ class _RiwayatPageState extends State<RiwayatPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).primaryColor,
+            ),
             child: const Text('Tutup'),
           ),
           ElevatedButton(
@@ -304,6 +322,11 @@ class _RiwayatPageState extends State<RiwayatPage> {
               Navigator.pop(context);
               _printReceipt(transactionId, data);
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
             child: const Text('Cetak Ulang'),
           ),
         ],

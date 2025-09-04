@@ -47,9 +47,9 @@ class _PengaturanPageState extends State<PengaturanPage> {
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pengaturan berhasil disimpan'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Pengaturan berhasil disimpan'),
+          backgroundColor: Theme.of(context).primaryColor,
         ),
       );
     } catch (e) {
@@ -64,7 +64,6 @@ class _PengaturanPageState extends State<PengaturanPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pengaturan'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -80,27 +79,59 @@ class _PengaturanPageState extends State<PengaturanPage> {
             const SizedBox(height: 16),
             TextField(
               controller: _namaTokoController,
-              decoration: const InputDecoration(labelText: 'Nama Toko'),
+              decoration: InputDecoration(
+                labelText: 'Nama Toko',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                ),
+              ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _alamatController,
-              decoration: const InputDecoration(labelText: 'Alamat'),
+              decoration: InputDecoration(
+                labelText: 'Alamat',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                ),
+              ),
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _nomorHPController,
-              decoration: const InputDecoration(labelText: 'Nomor HP'),
+              decoration: InputDecoration(
+                labelText: 'Nomor HP',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                ),
+              ),
               keyboardType: TextInputType.phone,
             ),
+            const SizedBox(height: 16),
             TextField(
               controller: _namaKasirController,
-              decoration: const InputDecoration(labelText: 'Nama Kasir'),
+              decoration: InputDecoration(
+                labelText: 'Nama Kasir',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.lightBlue,
+                backgroundColor: Theme.of(context).primaryColor,
                 foregroundColor: Colors.white,
                 minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
               icon: const Icon(Icons.save),
               label: const Text('Simpan Pengaturan'),
@@ -110,6 +141,10 @@ class _PengaturanPageState extends State<PengaturanPage> {
             Text('Preview Struk:', style: Theme.of(context).textTheme.titleMedium),
             Card(
               elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
+              ),
               margin: const EdgeInsets.symmetric(vertical: 8),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),

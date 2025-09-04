@@ -133,7 +133,6 @@ class _TransaksiPageState extends State<TransaksiPage> {
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Transaksi'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -424,8 +423,10 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                 style: ElevatedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 12),
+                                  backgroundColor: Theme.of(context).primaryColor,
+                                  foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
                                 child: const Text(
@@ -471,8 +472,10 @@ class _TransaksiPageState extends State<TransaksiPage> {
                                 style: ElevatedButton.styleFrom(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 16),
+                                  backgroundColor: Theme.of(context).primaryColor,
+                                  foregroundColor: Colors.white,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
                                 ),
                                 child: const Text(
@@ -639,7 +642,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
           final change = payment >= _total ? payment - _total : 0;
 
           return AlertDialog(
-            title: const Text('Checkout'),
+            title: Text('Checkout', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -652,9 +656,13 @@ class _TransaksiPageState extends State<TransaksiPage> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: _paymentController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Nominal Pembayaran',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+                      ),
                       prefixText: 'Rp ',
                     ),
                     keyboardType: TextInputType.number,
@@ -724,10 +732,18 @@ class _TransaksiPageState extends State<TransaksiPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).primaryColor,
+                ),
                 child: const Text('Batal'),
               ),
               ElevatedButton(
                 onPressed: payment >= _total ? _processCheckout : null,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
                 child: const Text('Bayar'),
               ),
             ],
@@ -784,7 +800,8 @@ class _TransaksiPageState extends State<TransaksiPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Transaksi Berhasil'),
+        title: Text('Transaksi Berhasil', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -807,6 +824,9 @@ class _TransaksiPageState extends State<TransaksiPage> {
               Navigator.pop(context);
               _printReceipt(transactionId, _cart, _total, payment, change);
             },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).primaryColor,
+            ),
             child: const Text('Cetak Struk'),
           ),
           ElevatedButton(
@@ -819,6 +839,11 @@ class _TransaksiPageState extends State<TransaksiPage> {
                 _searchQuery = '';
               });
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
             child: const Text('Selesai'),
           ),
         ],
