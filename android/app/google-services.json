@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "498874876936",
+    "project_id": "kasir-ku-ec40c",
+    "storage_bucket": "kasir-ku-ec40c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:498874876936:android:bcbccbdffc634144a87dbd",
+        "android_client_info": {
+          "package_name": "id.my.naufalfarrasw"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDOw2OXnoSVacdM-cDCZre1lE7FocmLz60"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
