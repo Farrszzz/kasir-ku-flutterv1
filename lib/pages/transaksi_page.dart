@@ -139,6 +139,37 @@ class _TransaksiPageState extends State<TransaksiPage> {
       resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: const Text('Transaksi'),
+        actions: [
+          Consumer<SyncService>(
+            builder: (context, syncService, child) {
+              return Container(
+                margin: const EdgeInsets.only(right: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: syncService.isOnline
+                            ? (syncService.isSyncing ? Colors.orange : Colors.green)
+                            : Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      syncService.isOnline
+                          ? (syncService.isSyncing ? 'Syncing' : 'Online')
+                          : 'Offline',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -213,7 +244,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
                           }
                           
                           final docs = snapshot.data?.docs ?? [];
-                          final products = docs.where((doc) {
+                          final items = docs.where((doc) {
                             final data = doc.data();
                             final name = (data['name'] ?? '').toString().toLowerCase();
                             final barcode = (data['barcode'] ?? '').toString().toLowerCase();
@@ -229,9 +260,9 @@ class _TransaksiPageState extends State<TransaksiPage> {
 
                           return ListView.builder(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
-                            itemCount: products.length,
+                            itemCount: items.length,
                             itemBuilder: (context, index) {
-                              final doc = products[index];
+                              final doc = items[index];
                               final data = doc.data();
                               final stock = (data['stock'] ?? 0) as int;
                               final isFromCache = syncService.isFromCache(doc);

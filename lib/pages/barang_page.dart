@@ -102,86 +102,33 @@ class _BarangPageState extends State<BarangPage> {
         title: Text("Product Management"),
         centerTitle: true,
         actions: [
-          // Sync status indicator
-          StreamBuilder<bool>(
-            stream: _syncService?.connectionStream,
-            initialData: _syncService?.isOnline ?? false,
-            builder: (context, snapshot) {
-              final isOnline = snapshot.data ?? false;
+          Consumer<SyncService>(
+            builder: (context, syncService, child) {
               return Container(
-                margin: const EdgeInsets.only(right: 8),
+                margin: const EdgeInsets.only(right: 16),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isOnline ? Icons.cloud_done : Icons.cloud_off,
-                      color: isOnline ? Colors.green : Colors.grey,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isOnline ? 'Online' : 'Offline',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isOnline ? Colors.green : Colors.grey,
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: syncService.isOnline
+                            ? (syncService.isSyncing ? Colors.orange : Colors.green)
+                            : Colors.red,
+                        shape: BoxShape.circle,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      syncService.isOnline
+                          ? (syncService.isSyncing ? 'Syncing' : 'Online')
+                          : 'Offline',
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ],
                 ),
               );
-            },
-          ),
-          // Pending operations count
-          Consumer<SyncService>(
-            builder: (context, syncService, child) {
-              final pendingCount = syncService.pendingOperationsCount;
-              if (pendingCount > 0) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.sync_problem, size: 14, color: Colors.white),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$pendingCount',
-                        style: const TextStyle(fontSize: 12, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-          // Manual sync button
-          IconButton(
-            icon: Consumer<SyncService>(
-              builder: (context, syncService, child) {
-                return syncService.isSyncing
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.sync);
-              },
-            ),
-            onPressed: () async {
-              final success = await _syncService?.syncNow() ?? false;
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(success ? 'Sinkronisasi berhasil' : 'Sinkronisasi gagal'),
-                    backgroundColor: success ? Colors.green : Colors.red,
-                  ),
-                );
-              }
             },
           ),
         ],

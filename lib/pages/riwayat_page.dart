@@ -64,30 +64,31 @@ class _RiwayatPageState extends State<RiwayatPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Riwayat Transaksi'),
+        centerTitle: true,
         actions: [
-          // Sync status indicator
-          StreamBuilder<bool>(
-            stream: _syncService?.connectionStream,
-            initialData: _syncService?.isOnline ?? false,
-            builder: (context, snapshot) {
-              final isOnline = snapshot.data ?? false;
+          Consumer<SyncService>(
+            builder: (context, syncService, child) {
               return Container(
-                margin: const EdgeInsets.only(right: 8),
+                margin: const EdgeInsets.only(right: 16),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      isOnline ? Icons.cloud_done : Icons.cloud_off,
-                      color: isOnline ? Colors.green : Colors.grey,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      isOnline ? 'Online' : 'Offline',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: isOnline ? Colors.green : Colors.grey,
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: syncService.isOnline
+                            ? (syncService.isSyncing ? Colors.orange : Colors.green)
+                            : Colors.red,
+                        shape: BoxShape.circle,
                       ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      syncService.isOnline
+                          ? (syncService.isSyncing ? 'Syncing' : 'Online')
+                          : 'Offline',
+                      style: const TextStyle(fontSize: 12),
                     ),
                   ],
                 ),

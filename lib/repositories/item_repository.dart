@@ -19,7 +19,7 @@ abstract class ItemRepository {
 // Implementasi Firestore Repository
 class FirestoreItemRepository implements ItemRepository {
   final CollectionReference _itemsCollection = 
-      FirebaseFirestore.instance.collection('products');
+      FirebaseFirestore.instance.collection('items');
 
   @override
   Future<List<ItemModel>> getAllItems() async {

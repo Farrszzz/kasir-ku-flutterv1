@@ -49,8 +49,8 @@ class AppProvider extends ChangeNotifier {
   }
   
   // Memeriksa apakah ada transaksi yang belum disinkronkan
-  Future<bool> hasPendingTransactions() async {
-    return await syncService.hasPendingTransactions();
+  bool hasPendingTransactions() {
+    return syncService.hasPendingTransactions();
   }
   
   // Menutup resources
