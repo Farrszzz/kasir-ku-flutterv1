@@ -3,6 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:kasir_ku/pages/barcode_scanner_page.dart';
+import 'package:kasir_ku/models/item_model.dart';
+import 'package:kasir_ku/services/sync_service.dart';
+import 'package:provider/provider.dart';
+import 'package:uuid/uuid.dart';
 
 // ====================== HALAMAN UTAMA BARANG ======================
 
@@ -16,23 +20,26 @@ class BarangPage extends StatefulWidget {
 class _BarangPageState extends State<BarangPage> {
   String searchQuery = "";
   String selectedCategory = "All";
-
-  // ambil kategori unik dari firestore untuk filter & suggestion
-  Future<List<String>> _getCategories() async {
-    try {
-      final snapshot =
-          await FirebaseFirestore.instance.collection('products').get();
-      final categories = snapshot.docs
-          .map((doc) => (doc['category'] ?? "").toString())
-          .where((cat) => cat.isNotEmpty)
-          .toSet()
-          .toList();
-      categories.sort();
-      return categories;
-    } catch (e) {
-      print('Error fetching categories: $e');
-      return [];
-    }
+  SyncService? _syncService;
+  
+  @override
+  void initState() {
+    super.initState();
+  }
+  
+  // Get categories from Firestore snapshots
+  Stream<List<String>> _getCategoriesStream() {
+    return _syncService?.getCollectionSnapshots('items') 
+        .map((snapshot) {
+          final categories = <String>{};
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            if (data['category'] != null) {
+              categories.add(data['category'].toString());
+            }
+          }
+          return ['All', ...categories.toList()];
+        }) ?? Stream.value(['All']);
   }
 
   // format currency
@@ -42,7 +49,7 @@ class _BarangPageState extends State<BarangPage> {
   }
 
   // open form tambah / edit barang
-  void _openForm({DocumentSnapshot? product}) {
+  void _openForm({ItemModel? item, DocumentSnapshot? productSnapshot}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -55,32 +62,76 @@ class _BarangPageState extends State<BarangPage> {
         ),
         child: Container(
           width: MediaQuery.of(context).size.width * 0.9, // Make form wider
-          child: AddProductForm(product: product),
+          child: AddProductForm(product: item, productSnapshot: productSnapshot),
         ),
       ),
     );
   }
 
   // hapus produk
-  void _deleteProduct(String id) {
+  void _deleteProduct(String id) async {
     try {
-      FirebaseFirestore.instance.collection('products').doc(id).delete();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Produk berhasil dihapus')),
+      // Add delete operation to sync queue
+      await _syncService?.addPendingOperation(
+        collection: 'items',
+        type: OperationType.delete,
+        documentId: id,
+        data: {},
       );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Produk berhasil dihapus')),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus produk: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus produk: $e')),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    _syncService = Provider.of<SyncService>(context);
+    
     return Scaffold(
       appBar: AppBar(
         title: Text("Product Management"),
         centerTitle: true,
+        actions: [
+          Consumer<SyncService>(
+            builder: (context, syncService, child) {
+              return Container(
+                margin: const EdgeInsets.only(right: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: syncService.isOnline
+                            ? (syncService.isSyncing ? Colors.orange : Colors.green)
+                            : Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      syncService.isOnline
+                          ? (syncService.isSyncing ? 'Syncing' : 'Online')
+                          : 'Offline',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -104,11 +155,17 @@ class _BarangPageState extends State<BarangPage> {
           ),
 
           // filter by category
-          FutureBuilder<List<String>>(
-            future: _getCategories(),
+          StreamBuilder<List<String>>(
+            stream: _getCategoriesStream(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) return SizedBox();
-              final categories = ["All", ...snapshot.data!];
+              if (!snapshot.hasData) return const SizedBox();
+              final categories = snapshot.data!;
+              
+              // Ensure selectedCategory is valid
+              if (!categories.contains(selectedCategory)) {
+                selectedCategory = 'All';
+              }
+              
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: DropdownButtonFormField<String>(
@@ -143,79 +200,160 @@ class _BarangPageState extends State<BarangPage> {
 
           // list produk
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('products')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _syncService?.getCollectionSnapshots('items'),
               builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text("Error: ${snapshot.error}"));
+                if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
                 }
                 
-                if (!snapshot.hasData)
-                  return Center(child: CircularProgressIndicator());
-                  
-                final docs = snapshot.data!.docs.where((doc) {
-                  final name = (doc['name'] ?? "").toString().toLowerCase();
-                  final barcode = (doc['barcode'] ?? "").toString().toLowerCase();
-                  final category = (doc['category'] ?? "").toString();
-                  final matchesSearch = name.contains(searchQuery) || 
-                                        barcode.contains(searchQuery);
-                  final matchesCategory =
-                      selectedCategory == "All" || category == selectedCategory;
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+                
+                final docs = snapshot.data?.docs ?? [];
+                
+                // Convert to ItemModel and filter
+                final filteredItems = docs.where((doc) {
+                  final data = doc.data();
+                  final name = (data['name'] ?? '').toString().toLowerCase();
+                  final barcode = (data['barcode'] ?? '').toString().toLowerCase();
+                  final category = (data['category'] ?? '').toString();
+
+                  final matchesSearch = searchQuery.isEmpty ||
+                      name.contains(searchQuery.toLowerCase()) ||
+                      barcode.contains(searchQuery.toLowerCase());
+
+                  final matchesCategory = selectedCategory == "All" ||
+                      category == selectedCategory;
+
                   return matchesSearch && matchesCategory;
                 }).toList();
 
-                if (docs.isEmpty) {
-                  return Center(child: Text("Tidak ada produk"));
+                if (filteredItems.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text('Tidak ada produk', style: TextStyle(color: Colors.grey)),
+                      ],
+                    ),
+                  );
                 }
 
-                return ListView.builder(
-                  itemCount: docs.length,
-                  itemBuilder: (ctx, i) {
-                    final data = docs[i];
-                    return Card(
-                      margin: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(color: Color(0xFFE5E5E5), width: 1),
-                      ),
-                      child: ListTile(
-                        title: Text(data['name'] ?? ""),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Price: ${formatCurrency(data['price'] ?? 0)}",
-                            ),
-                            Text(
-                              "Stock: ${data['stock'] ?? 0} | Category: ${data['category'] ?? '-'}",
-                            ),
-                            if ((data['barcode'] ?? "").isNotEmpty)
-                              Text(
-                                "Barcode: ${data['barcode']}",
-                                style: TextStyle(fontSize: 12),
-                              ),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: Icon(Icons.edit, color: Colors.orange),
-                              onPressed: () => _openForm(product: data),
-                            ),
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () => _deleteProduct(data.id),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    await _syncService?.syncNow();
                   },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(8),
+                    itemCount: filteredItems.length,
+                    itemBuilder: (context, index) {
+                      final doc = filteredItems[index];
+                      final data = doc.data();
+                      final isFromCache = _syncService?.isFromCache(doc) ?? false;
+                      final hasPendingWrites = _syncService?.hasPendingWrites(doc) ?? false;
+                      
+                      return Card(
+                        margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: hasPendingWrites ? Colors.orange.shade200 : const Color(0xFFE5E5E5), 
+                            width: 1
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            ListTile(
+                              title: Text(data['name'] ?? ''),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Price: ${formatCurrency(data['price'] ?? 0)}",
+                                  ),
+                                  Text(
+                                    "Stock: ${data['stock'] ?? 0} | Category: ${data['category'] ?? ''}",
+                                  ),
+                                  if (data['barcode'] != null && data['barcode'].toString().isNotEmpty)
+                                    Text(
+                                      "Barcode: ${data['barcode']}",
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: Colors.blue),
+                                    onPressed: () => _openForm(productSnapshot: doc),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete, color: Colors.red),
+                                    onPressed: () => _deleteProduct(doc.id),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Sync status indicator
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasPendingWrites)
+                                    Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.sync_problem,
+                                        color: Colors.white,
+                                        size: 12,
+                                      ),
+                                    )
+                                  else if (isFromCache)
+                                    Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.cloud_off,
+                                        color: Colors.white,
+                                        size: 12,
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.all(2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(
+                                        Icons.cloud_done,
+                                        color: Colors.white,
+                                        size: 12,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 );
               },
             ),
@@ -236,8 +374,10 @@ class _BarangPageState extends State<BarangPage> {
 // ====================== FORM TAMBAH / EDIT PRODUK ======================
 
 class AddProductForm extends StatefulWidget {
-  final DocumentSnapshot? product;
-  AddProductForm({this.product});
+  final ItemModel? product;
+  final DocumentSnapshot? productSnapshot;
+  
+  AddProductForm({this.product, this.productSnapshot});
 
   @override
   _AddProductFormState createState() => _AddProductFormState();
@@ -262,6 +402,13 @@ class _AddProductFormState extends State<AddProductForm> {
     // isi data jika edit
     if (widget.product != null) {
       final p = widget.product!;
+      nameCtrl.text = p.name;
+      categoryCtrl.text = p.category;
+      priceCtrl.text = p.price.toString();
+      stockCtrl.text = p.stock.toString();
+      barcodeCtrl.text = p.barcode ?? '';
+    } else if (widget.productSnapshot != null) {
+      final p = widget.productSnapshot!;
       nameCtrl.text = p['name'] ?? "";
       categoryCtrl.text = p['category'] ?? "";
       priceCtrl.text = (p['price'] ?? "").toString();
@@ -272,13 +419,18 @@ class _AddProductFormState extends State<AddProductForm> {
 
   Future<void> _loadCategories() async {
     try {
-      final snapshot =
-          await FirebaseFirestore.instance.collection('products').get();
+      final syncService = Provider.of<SyncService>(context, listen: false);
+      final snapshot = await syncService.getCollectionSnapshots('items').first;
+      final categories = <String>{};
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['category'] != null) {
+          categories.add(data['category'].toString());
+        }
+      }
       setState(() {
-        categorySuggestions = snapshot.docs
-            .map((d) => (d['category'] ?? "").toString())
+        categorySuggestions = categories
             .where((c) => c.isNotEmpty)
-            .toSet()
             .toList();
       });
     } catch (e) {
@@ -294,45 +446,63 @@ class _AddProductFormState extends State<AddProductForm> {
     });
 
     try {
-      if (widget.product == null) {
+      final syncService = Provider.of<SyncService>(context, listen: false);
+      
+      String itemId;
+      DateTime createdAt;
+      OperationType operationType;
+      
+      if (widget.product == null && widget.productSnapshot == null) {
         // tambah baru
-        await FirebaseFirestore.instance.collection('products').add({
-          'name': nameCtrl.text,
-          'category': categoryCtrl.text,
-          'price': double.tryParse(priceCtrl.text) ?? 0.0,
-          'stock': int.tryParse(stockCtrl.text) ?? 0,
-          'barcode': barcodeCtrl.text,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Produk berhasil ditambahkan')),
-        );
+        itemId = const Uuid().v4();
+        createdAt = DateTime.now();
+        operationType = OperationType.create;
       } else {
         // update
-        await FirebaseFirestore.instance
-            .collection('products')
-            .doc(widget.product!.id)
-            .update({
-          'name': nameCtrl.text,
-          'category': categoryCtrl.text,
-          'price': double.tryParse(priceCtrl.text) ?? 0.0,
-          'stock': int.tryParse(stockCtrl.text) ?? 0,
-          'barcode': barcodeCtrl.text,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
-        
+        if (widget.product != null) {
+          itemId = widget.product!.id;
+          createdAt = widget.product!.createdAt ?? DateTime.now();
+        } else {
+          itemId = widget.productSnapshot!.id;
+          createdAt = (widget.productSnapshot!['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+        }
+        operationType = OperationType.update;
+      }
+      
+      final itemData = {
+        'name': nameCtrl.text,
+        'category': categoryCtrl.text,
+        'price': double.tryParse(priceCtrl.text) ?? 0.0,
+        'stock': int.tryParse(stockCtrl.text) ?? 0,
+        'barcode': barcodeCtrl.text.isEmpty ? null : barcodeCtrl.text,
+        'createdAt': Timestamp.fromDate(createdAt),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      };
+      
+      // Add to sync queue
+      await syncService.addPendingOperation(
+        collection: 'items',
+        type: operationType,
+        documentId: itemId,
+        data: itemData,
+      );
+      
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Produk berhasil diperbarui')),
+          SnackBar(
+            content: Text(operationType == OperationType.create 
+                ? 'Produk berhasil ditambahkan' 
+                : 'Produk berhasil diperbarui'),
+          ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
         );
       }
-
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
     } finally {
       if (mounted) {
         setState(() {

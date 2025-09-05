@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../helpers/receipt_helper.dart';
+import '../services/sync_service.dart';
 
 class PengaturanPage extends StatefulWidget {
   const PengaturanPage({super.key});
@@ -64,6 +66,37 @@ class _PengaturanPageState extends State<PengaturanPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Pengaturan'),
+        actions: [
+          Consumer<SyncService>(
+            builder: (context, syncService, child) {
+              return Container(
+                margin: const EdgeInsets.only(right: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: syncService.isOnline
+                            ? (syncService.isSyncing ? Colors.orange : Colors.green)
+                            : Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      syncService.isOnline
+                          ? (syncService.isSyncing ? 'Syncing' : 'Online')
+                          : 'Offline',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
