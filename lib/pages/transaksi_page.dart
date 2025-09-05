@@ -4,8 +4,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
 import '../helpers/receipt_helper.dart' as receipt_helper;
 import '../helpers/receipt_helper.dart' show ReceiptHelper;
+import '../models/transaction_model.dart';
+import '../models/transaction_item_model.dart';
+import '../models/item_model.dart';
+import '../services/sync_service.dart';
 
 class TransaksiPage extends StatefulWidget {
   const TransaksiPage({super.key});
@@ -20,6 +25,7 @@ class _TransaksiPageState extends State<TransaksiPage> {
   final List<CartItem> _cart = [];
   double _total = 0;
   String _searchQuery = '';
+  List<dynamic> _searchResults = [];
 
   // Menggunakan ReceiptHelper untuk cetak struk
 
@@ -194,115 +200,156 @@ class _TransaksiPageState extends State<TransaksiPage> {
                 // -------- Product List --------
                 Expanded(
                   flex: isLandscape ? 2 : 3,
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('products')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                        return const Center(
-                            child: Text('Belum ada barang tersedia'));
-                      }
+                  child: Consumer<SyncService>(
+                    builder: (context, syncService, child) {
+                      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                        stream: syncService.getCollectionSnapshots('items'),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                            return const Center(child: CircularProgressIndicator());
+                          }
+                          if (snapshot.hasError) {
+                            return Center(child: Text('Error: ${snapshot.error}'));
+                          }
+                          
+                          final docs = snapshot.data?.docs ?? [];
+                          final products = docs.where((doc) {
+                            final data = doc.data();
+                            final name = (data['name'] ?? '').toString().toLowerCase();
+                            final barcode = (data['barcode'] ?? '').toString().toLowerCase();
+                            final stock = (data['stock'] ?? 0) as int;
+                            
+                            // Only show items with stock > 0
+                            if (stock <= 0) return false;
+                            
+                            return _searchQuery.isEmpty ||
+                                name.contains(_searchQuery) ||
+                                barcode.contains(_searchQuery);
+                          }).toList();
 
-                      final products = snapshot.data!.docs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name =
-                            (data['name'] ?? '').toString().toLowerCase();
-                        final barcode =
-                            (data['barcode'] ?? '').toString().toLowerCase();
-                        return _searchQuery.isEmpty ||
-                            name.contains(_searchQuery) ||
-                            barcode.contains(_searchQuery);
-                      }).toList();
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            itemCount: products.length,
+                            itemBuilder: (context, index) {
+                              final doc = products[index];
+                              final data = doc.data();
+                              final stock = (data['stock'] ?? 0) as int;
+                              final isFromCache = syncService.isFromCache(doc);
+                              final hasPendingWrites = syncService.hasPendingWrites(doc);
 
-                      return ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: products.length,
-                        itemBuilder: (context, index) {
-                          final doc = products[index];
-                          final data = doc.data() as Map<String, dynamic>;
-                          final stock = data['stock'] ?? 0;
-
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: LayoutBuilder(
-                              builder: (context, itemCons) {
-                                return ListTile(
-                                  dense: itemCons.maxWidth < 350,
-                                  visualDensity: itemCons.maxWidth < 350
-                                      ? const VisualDensity(
-                                          horizontal: -2, vertical: -2)
-                                      : null,
-                                  leading: CircleAvatar(
-                                    backgroundColor: stock > 0
-                                        ? Theme.of(context).colorScheme.primary
-                                        : Colors.grey,
-                                    child: Text(
-                                      (data['name'] ?? '').toString().isNotEmpty
-                                          ? (data['name'] ?? '')
-                                              .toString()[0]
-                                              .toUpperCase()
-                                          : '?',
-                                      style:
-                                          const TextStyle(color: Colors.white),
-                                    ),
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: hasPendingWrites ? Colors.orange.shade200 : 
+                                           isFromCache ? Colors.grey.shade200 : 
+                                           const Color(0xFFE5E5E5),
+                                    width: 1,
                                   ),
-                                  title: Text(
-                                    data['name'] ?? 'Nama tidak tersedia',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.bold),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                  ),
-                                  subtitle: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text('Stok: $stock'),
-                                      if (data['barcode'] != null &&
-                                          data['barcode'].toString().isNotEmpty)
-                                        Text(
-                                          'Barcode: ${data['barcode']}',
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                    ],
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(right: 8.0),
-                                        child: Text(
-                                          'Rp ${NumberFormat('#,###', 'id_ID').format(data['price'] ?? 0)}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
+                                ),
+                                child: Stack(
+                                  children: [
+                                    LayoutBuilder(
+                                      builder: (context, itemCons) {
+                                        return ListTile(
+                                          dense: itemCons.maxWidth < 350,
+                                          visualDensity: itemCons.maxWidth < 350
+                                              ? const VisualDensity(
+                                                  horizontal: -2, vertical: -2)
+                                              : null,
+                                          leading: CircleAvatar(
+                                            backgroundColor: stock > 0
+                                                ? Theme.of(context).colorScheme.primary
+                                                : Colors.grey,
+                                            child: Text(
+                                              (data['name'] ?? '').toString().isNotEmpty
+                                                  ? (data['name'] ?? '')
+                                                      .toString()[0]
+                                                      .toUpperCase()
+                                                  : '?',
+                                              style:
+                                                  const TextStyle(color: Colors.white),
+                                            ),
                                           ),
+                                          title: Text(
+                                            data['name'] ?? '',
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold),
+                                            overflow: TextOverflow.ellipsis,
+                                            maxLines: 1,
+                                          ),
+                                          subtitle: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text('Stok: $stock'),
+                                              if (data['barcode'] != null &&
+                                                  data['barcode'].toString().isNotEmpty)
+                                                Text(
+                                                  'Barcode: ${data['barcode']}',
+                                                  overflow: TextOverflow.ellipsis,
+                                                  maxLines: 1,
+                                                ),
+                                            ],
+                                          ),
+                                          trailing: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.only(right: 8.0),
+                                                child: Text(
+                                                  'Rp ${NumberFormat('#,###', 'id_ID').format(data['price'] ?? 0)}',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                              IconButton(
+                                                onPressed: stock > 0
+                                                    ? () => _addToCartFromDoc(doc)
+                                                    : null,
+                                                icon:
+                                                    const Icon(Icons.add_shopping_cart),
+                                                iconSize: 20,
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    // Sync status indicator
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: hasPendingWrites ? Colors.orange :
+                                                 isFromCache ? Colors.grey :
+                                                 Colors.green,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          hasPendingWrites ? Icons.sync_problem :
+                                          isFromCache ? Icons.cloud_off :
+                                          Icons.cloud_done,
+                                          color: Colors.white,
+                                          size: 10,
                                         ),
                                       ),
-                                      IconButton(
-                                        onPressed: stock > 0
-                                            ? () => _addToCart(doc.id, data)
-                                            : null,
-                                        icon:
-                                            const Icon(Icons.add_shopping_cart),
-                                        iconSize: 20,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              },
-                            ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           );
                         },
                       );
@@ -526,19 +573,25 @@ class _TransaksiPageState extends State<TransaksiPage> {
   // ---------- FIND by BARCODE ----------
   void _findAndAddProductByBarcode(String barcode) async {
     try {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('products')
-          .where('barcode', isEqualTo: barcode)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final doc = querySnapshot.docs.first;
+      final syncService = Provider.of<SyncService>(context, listen: false);
+      final snapshot = await syncService.getCollectionSnapshots('items').first;
+      
+      QueryDocumentSnapshot<Map<String, dynamic>>? foundDoc;
+      for (final doc in snapshot.docs) {
         final data = doc.data();
-        final stock = data['stock'] ?? 0;
+        if (data['barcode'] != null && 
+            data['barcode'].toString().toLowerCase() == barcode.toLowerCase()) {
+          foundDoc = doc;
+          break;
+        }
+      }
 
+      if (foundDoc != null) {
+        final data = foundDoc.data() as Map<String, dynamic>;
+        final stock = (data['stock'] ?? 0) as int;
+        
         if (stock > 0) {
-          _addToCart(doc.id, data);
+          _addToCartFromDoc(foundDoc);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -575,21 +628,42 @@ class _TransaksiPageState extends State<TransaksiPage> {
       }
     }
   }
+  
+  void _addToCartFromDoc(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    setState(() {
+      final existingIndex = _cart.indexWhere((cartItem) => cartItem.id == doc.id);
+      if (existingIndex >= 0) {
+        _cart[existingIndex].quantity += 1;
+      } else {
+        _cart.add(
+          CartItem(
+            id: doc.id,
+            name: data['name'] ?? '',
+            price: (data['price'] ?? 0).toDouble(),
+            quantity: 1,
+          ),
+        );
+      }
+      _updateTotal();
+    });
+  }
 
   // ---------- CART OPS ----------
-  void _addToCart(String productId, Map<String, dynamic> productData) {
+  void _addToCart(String id, Map<String, dynamic> data) {
     setState(() {
-      final existingIndex = _cart.indexWhere((item) => item.id == productId);
-
+      final existingIndex = _cart.indexWhere((item) => item.id == id);
       if (existingIndex >= 0) {
-        _cart[existingIndex].quantity++;
+        _cart[existingIndex].quantity += 1;
       } else {
-        _cart.add(CartItem(
-          id: productId,
-          name: productData['name'] ?? '',
-          price: (productData['price'] ?? 0).toDouble(),
-          quantity: 1,
-        ));
+        _cart.add(
+          CartItem(
+            id: id,
+            name: data['name'],
+            price: data['price'].toDouble(),
+            quantity: 1,
+          ),
+        );
       }
       _updateTotal();
     });
@@ -765,34 +839,71 @@ class _TransaksiPageState extends State<TransaksiPage> {
 
     final change = payment - _total;
     final transactionId = const Uuid().v4();
+    final syncService = Provider.of<SyncService>(context, listen: false);
+    
+    try {
+      // Prepare transaction data
+      final transactionItems = _cart.map((item) => {
+        'id': item.id,
+        'name': item.name,
+        'price': item.price,
+        'quantity': item.quantity,
+        'subtotal': item.price * item.quantity,
+      }).toList();
 
-    await FirebaseFirestore.instance
-        .collection('transactions')
-        .doc(transactionId)
-        .set({
-      'id': transactionId,
-      'items': _cart
-          .map((item) => {
-                'id': item.id,
-                'name': item.name,
-                'price': item.price,
-                'quantity': item.quantity,
-                'subtotal': item.price * item.quantity,
-              })
-          .toList(),
-      'total': _total,
-      'payment': payment,
-      'change': change,
-      'date': FieldValue.serverTimestamp(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+      final transactionData = {
+        'items': transactionItems,
+        'total': _total,
+        'payment': payment,
+        'change': change,
+        'cashier': 'Kasir', // You can get this from user preferences
+        'createdAt': Timestamp.fromDate(DateTime.now()),
+        'updatedAt': Timestamp.fromDate(DateTime.now()),
+      };
 
-    for (final item in _cart) {
-      final productRef =
-          FirebaseFirestore.instance.collection('products').doc(item.id);
-      await productRef.update({
-        'stock': FieldValue.increment(-item.quantity),
-      });
+      // Add transaction to sync queue
+      await syncService.addPendingOperation(
+        collection: 'transactions',
+        type: OperationType.create,
+        documentId: transactionId,
+        data: transactionData,
+      );
+      
+      // Update stock for each item
+      for (final item in _cart) {
+        // Get current item data from Firestore
+        final itemSnapshot = await syncService.getCollectionSnapshots('items')
+            .map((snapshot) => snapshot.docs.firstWhere(
+                (doc) => doc.id == item.id,
+                orElse: () => throw Exception('Item not found')))
+            .first;
+        
+        final currentData = itemSnapshot.data();
+        final currentStock = (currentData['stock'] ?? 0) as int;
+        final newStock = currentStock - item.quantity;
+        
+        // Update item stock
+        final updatedItemData = Map<String, dynamic>.from(currentData);
+        updatedItemData['stock'] = newStock;
+        updatedItemData['updatedAt'] = Timestamp.fromDate(DateTime.now());
+        
+        await syncService.addPendingOperation(
+          collection: 'items',
+          type: OperationType.update,
+          documentId: item.id,
+          data: updatedItemData,
+        );
+      }
+      
+      print('Transaksi ${transactionId} berhasil disimpan dan akan disinkronkan');
+    } catch (e) {
+      print('Error saat memproses checkout: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saat memproses checkout: $e')),
+        );
+      }
+      return;
     }
 
     Navigator.pop(context);
