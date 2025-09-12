@@ -1,4 +1,4 @@
-# Kasir-ku — Aplikasi POS Flutter (Offline-First)
+# Kasir-ku — Aplikasi POS Flutter
 
 Aplikasi Point of Sale (POS) modern yang mendukung operasi offline dan sinkronisasi online otomatis menggunakan Firebase Cloud Firestore.
 
